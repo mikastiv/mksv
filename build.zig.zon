@@ -1,0 +1,11 @@
+.{
+    .name = .qoi_image,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .paths = .{
+        "src",
+        "build.zig",
+        "build.zig.zon",
+    },
+    .fingerprint = 0xe8f3317931c75a5c,
+}
