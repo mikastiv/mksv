@@ -5,10 +5,15 @@ pub const Colorspace = enum {
     linear,
 };
 
+pub const Format = enum {
+    rgb,
+    rgba,
+};
+
 pub const Image = struct {
     pixels: []u8,
     width: u32,
     height: u32,
-    channels: u8,
+    format: Format,
     colorspace: Colorspace,
 };
