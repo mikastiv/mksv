@@ -26,7 +26,6 @@ pub fn main() !void {
     const writer = &file_writer.interface;
 
     try image.qoi.write(writer, &img);
-    try writer.flush();
 
     // try outputImage(img.pixels, img.width, img.height, writer);
 }

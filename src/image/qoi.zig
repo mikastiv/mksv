@@ -250,6 +250,7 @@ pub fn write(writer: *std.Io.Writer, image: *const Image) !void {
     }
 
     try writer.writeAll(&padding);
+    try writer.flush();
 }
 
 fn hash(pixel: Pixel) usize {
