@@ -2,17 +2,17 @@ const std = @import("std");
 const assert = std.debug.assert;
 const Image = @import("../image.zig").Image;
 
-const Format = enum(u8) {
+pub const Format = enum(u8) {
     rgb = 3,
     rgba = 4,
 };
 
-const Colorspace = enum(u8) {
+pub const Colorspace = enum(u8) {
     srgb = 0,
     linear = 1,
 };
 
-const Header = extern struct {
+pub const Header = extern struct {
     width: u32 align(1),
     height: u32 align(1),
     format: Format align(1),
@@ -131,10 +131,7 @@ pub fn read(
             .rgb => .rgb,
             .rgba => .rgba,
         },
-        .colorspace = switch (header.colorspace) {
-            .srgb => .srgb,
-            .linear => .linear,
-        },
+        .metadata = .{ .qoi_info = header },
     };
 }
 
@@ -145,18 +142,13 @@ const WriteError = error{
 
 const padding: [8]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 1 };
 
-pub fn write(writer: *std.Io.Writer, image: *const Image) !void {
+pub fn write(writer: *std.Io.Writer, image: *const Image, colorspace: Colorspace) !void {
     if (image.width == 0) return WriteError.InvalidWidth;
     if (image.height == 0) return WriteError.InvalidHeight;
 
     const format: Format = switch (image.format) {
         .rgb => .rgb,
         .rgba => .rgba,
-    };
-
-    const colorspace: Colorspace = switch (image.colorspace) {
-        .srgb => .srgb,
-        .linear => .linear,
     };
 
     const header: Header = .{

@@ -25,7 +25,7 @@ pub fn main() !void {
     var file_writer = output_file.writer(&write_buffer);
     const writer = &file_writer.interface;
 
-    try image.qoi.write(writer, &img);
+    try image.qoi.write(writer, &img, .srgb);
 
     // try outputImage(img.pixels, img.width, img.height, writer);
 }
