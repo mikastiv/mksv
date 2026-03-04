@@ -1,4 +1,5 @@
 pub const qoi = @import("image/qoi.zig");
+pub const ppm = @import("image/ppm.zig");
 
 pub const Image = struct {
     pixels: []u8,
