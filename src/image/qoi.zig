@@ -142,18 +142,20 @@ const WriteError = error{
 
 const padding: [8]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 1 };
 
-pub fn write(writer: *std.Io.Writer, image: *const Image, colorspace: Colorspace) !void {
-    if (image.width == 0) return WriteError.InvalidWidth;
-    if (image.height == 0) return WriteError.InvalidHeight;
-
-    const format: Format = switch (image.format) {
-        .rgb => .rgb,
-        .rgba => .rgba,
-    };
+pub fn write(
+    writer: *std.Io.Writer,
+    pixels: []const u8,
+    width: u32,
+    height: u32,
+    format: Format,
+    colorspace: Colorspace,
+) !void {
+    if (width == 0) return WriteError.InvalidWidth;
+    if (height == 0) return WriteError.InvalidHeight;
 
     const header: Header = .{
-        .width = image.width,
-        .height = image.height,
+        .width = width,
+        .height = height,
         .format = format,
         .colorspace = colorspace,
     };
@@ -161,7 +163,7 @@ pub fn write(writer: *std.Io.Writer, image: *const Image, colorspace: Colorspace
     try writer.writeAll(&Header.magic);
     try writer.writeStruct(header, .big);
 
-    const end = image.pixels.len - @intFromEnum(format);
+    const end = pixels.len - @intFromEnum(format);
     var pixel_pos: usize = 0;
 
     var cache: [64]Pixel = @splat(.init);
@@ -170,12 +172,12 @@ pub fn write(writer: *std.Io.Writer, image: *const Image, colorspace: Colorspace
 
     var run: u32 = 0;
 
-    while (pixel_pos < image.pixels.len) : (pixel_pos += @intFromEnum(format)) {
-        pixel.r = image.pixels[pixel_pos + 0];
-        pixel.g = image.pixels[pixel_pos + 1];
-        pixel.b = image.pixels[pixel_pos + 2];
+    while (pixel_pos < pixels.len) : (pixel_pos += @intFromEnum(format)) {
+        pixel.r = pixels[pixel_pos + 0];
+        pixel.g = pixels[pixel_pos + 1];
+        pixel.b = pixels[pixel_pos + 2];
         if (format == .rgba)
-            pixel.a = image.pixels[pixel_pos + 3];
+            pixel.a = pixels[pixel_pos + 3];
 
         if (pixel == prev_pixel) {
             run += 1;
