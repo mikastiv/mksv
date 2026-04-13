@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     zig.url = "github:mitchellh/zig-overlay";
-    zls.url = "github:zigtools/zls";
+    zls.url = "github:zigtools/zls/ce6c8f02c78e622421cfc2405c67c5222819ec03";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -14,17 +14,9 @@
         pkgs = import nixpkgs { inherit system; };
       in {
         devShells.default = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [
+          nativeBuildInputs = [
             zig.packages.${system}."0.15.2"
             zls.packages.${system}.zls
-            # glfw
-            # vulkan-loader
-            # vulkan-headers
-            # vulkan-tools
-            # vulkan-validation-layers
-            # vulkan-tools-lunarg
-            # shaderc
-            lldb
           ];
         };
       });

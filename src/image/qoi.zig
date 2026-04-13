@@ -42,7 +42,7 @@ const Pixel = packed struct(u32) {
 };
 
 pub const ReadError = error{
-    InvalidQoiFile,
+    InvalidSignature,
     InvalidHeader,
     InvalidData,
 } || std.mem.Allocator.Error || std.Io.Reader.Error;
@@ -53,7 +53,7 @@ pub fn read(
 ) ReadError!Image {
     const magic = try reader.takeArray(Header.magic.len);
     if (!std.mem.eql(u8, magic, &Header.magic))
-        return ReadError.InvalidQoiFile;
+        return ReadError.InvalidSignature;
 
     const header = reader.takeStruct(Header, .big) catch return ReadError.InvalidHeader;
 
