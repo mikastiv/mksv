@@ -3,9 +3,17 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    zig.url = "github:mitchellh/zig-overlay";
-    zls.url = "github:zigtools/zls/ce6c8f02c78e622421cfc2405c67c5222819ec03";
     flake-utils.url = "github:numtide/flake-utils";
+
+    zig = {
+      url = "github:mitchellh/zig-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    zls = {
+      url = "github:zigtools/zls";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, nixpkgs, zig, zls, flake-utils }:
@@ -15,7 +23,7 @@
       in {
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = [
-            zig.packages.${system}."0.15.2"
+            zig.packages.${system}."0.16.0"
             zls.packages.${system}.zls
           ];
         };
