@@ -1,6 +1,8 @@
 const std = @import("std");
 const assert = std.debug.assert;
-const Image = @import("../image.zig").Image;
+const img = @import("../image.zig");
+const Image = img.Image;
+const Rgba = img.Rgba;
 
 pub const Format = enum(u8) {
     rgb = 3,
@@ -32,15 +34,6 @@ const Mode = enum(u8) {
     const mask_2 = 0b1100_0000;
 };
 
-const Pixel = packed struct(u32) {
-    r: u8,
-    g: u8,
-    b: u8,
-    a: u8,
-
-    pub const init: Pixel = .{ .r = 0, .g = 0, .b = 0, .a = 0 };
-};
-
 pub const ReadError = error{
     InvalidSignature,
     InvalidHeader,
@@ -57,16 +50,15 @@ pub fn read(
 
     const header = reader.takeStruct(Header, .big) catch return ReadError.InvalidHeader;
 
-    const size = header.width * header.height * @intFromEnum(header.format);
-    const pixels = try allocator.alloc(u8, size);
-    var pixel_pos: usize = 0;
+    const size = header.width * header.height;
+    const pixels = try allocator.alloc(Rgba, size);
 
-    var cache: [64]Pixel = @splat(.init);
-    var pixel: Pixel = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
+    var cache: [64]Rgba = @splat(.{ .r = 0, .g = 0, .b = 0, .a = 0 });
+    var pixel: Rgba = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 
     var run: u32 = 0;
 
-    while (pixel_pos < size) : (pixel_pos += @intFromEnum(header.format)) {
+    for (0..size) |pixel_pos| {
         if (run > 0) {
             run -= 1;
         } else {
@@ -113,11 +105,7 @@ pub fn read(
             cache[hash(pixel) % cache.len] = pixel;
         }
 
-        pixels[pixel_pos + 0] = pixel.r;
-        pixels[pixel_pos + 1] = pixel.g;
-        pixels[pixel_pos + 2] = pixel.b;
-        if (header.format == .rgba)
-            pixels[pixel_pos + 3] = pixel.a;
+        pixels[pixel_pos] = pixel;
     }
 
     if (run > 0)
@@ -127,10 +115,6 @@ pub fn read(
         .pixels = pixels,
         .width = header.width,
         .height = header.height,
-        .format = switch (header.format) {
-            .rgb => .rgb,
-            .rgba => .rgba,
-        },
         .metadata = .{ .qoi_info = header },
     };
 }
@@ -144,10 +128,9 @@ const padding: [8]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 1 };
 
 pub fn write(
     writer: *std.Io.Writer,
-    pixels: []const u8,
+    pixels: []const Rgba,
     width: u32,
     height: u32,
-    format: Format,
     colorspace: Colorspace,
 ) !void {
     if (width == 0) return WriteError.InvalidWidth;
@@ -156,29 +139,21 @@ pub fn write(
     const header: Header = .{
         .width = width,
         .height = height,
-        .format = format,
+        .format = .rgba,
         .colorspace = colorspace,
     };
 
     try writer.writeAll(&Header.magic);
     try writer.writeStruct(header, .big);
 
-    const end = pixels.len - @intFromEnum(format);
-    var pixel_pos: usize = 0;
+    const end = pixels.len -| 1;
 
-    var cache: [64]Pixel = @splat(.init);
-    var pixel: Pixel = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
-    var prev_pixel: Pixel = pixel;
+    var cache: [64]Rgba = @splat(.{ .r = 0, .g = 0, .b = 0, .a = 0 });
+    var prev_pixel: Rgba = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 
     var run: u32 = 0;
 
-    while (pixel_pos < pixels.len) : (pixel_pos += @intFromEnum(format)) {
-        pixel.r = pixels[pixel_pos + 0];
-        pixel.g = pixels[pixel_pos + 1];
-        pixel.b = pixels[pixel_pos + 2];
-        if (format == .rgba)
-            pixel.a = pixels[pixel_pos + 3];
-
+    for (pixels, 0..) |pixel, pixel_pos| {
         if (pixel == prev_pixel) {
             run += 1;
             if (run == 62 or pixel_pos == end) {
@@ -247,6 +222,6 @@ pub fn write(
     try writer.flush();
 }
 
-fn hash(pixel: Pixel) usize {
+fn hash(pixel: Rgba) usize {
     return pixel.r *% 3 +% pixel.g *% 5 +% pixel.b *% 7 +% pixel.a *% 11;
 }

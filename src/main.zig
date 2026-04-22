@@ -23,7 +23,7 @@ pub fn main(init: std.process.Init) !void {
     var file_writer = output_qoi_file.writer(io, &write_buffer);
     const writer = &file_writer.interface;
 
-    try image.qoi.write(writer, img.pixels, img.width, img.height, .rgba, .srgb);
+    try image.qoi.write(writer, img.pixels, img.width, img.height, .srgb);
     try writer.flush();
 
     const output_ppm_filename = "test.ppm";
@@ -32,6 +32,6 @@ pub fn main(init: std.process.Init) !void {
 
     file_writer = output_ppm_file.writer(io, &write_buffer);
 
-    try image.ppm.write(writer, img.pixels, img.width, img.height, img.format, true);
+    try image.ppm.write(writer, img.pixels, img.width, img.height, true);
     try writer.flush();
 }

@@ -1,25 +1,31 @@
+const std = @import("std");
 pub const qoi = @import("image/qoi.zig");
 pub const ppm = @import("image/ppm.zig");
 
 pub const Image = struct {
-    pixels: []u8,
+    pixels: []Rgba,
     width: u32,
     height: u32,
-    format: Format,
 
     metadata: ?Metadata = null,
+};
+
+pub const Rgb = packed struct {
+    r: u8,
+    g: u8,
+    b: u8,
+};
+
+pub const Rgba = packed struct {
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
 };
 
 pub const Format = enum {
     rgb,
     rgba,
-
-    pub fn size(self: Format) usize {
-        return switch (self) {
-            .rgb => 3,
-            .rgba => 4,
-        };
-    }
 };
 
 pub const Metadata = union(enum) {

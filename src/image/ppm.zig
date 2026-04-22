@@ -1,6 +1,6 @@
 const std = @import("std");
 const assert = std.debug.assert;
-const Format = @import("../image.zig").Format;
+const Rgba = @import("../image.zig").Rgba;
 
 pub const WriteError = error{
     InvalidWidth,
@@ -9,10 +9,9 @@ pub const WriteError = error{
 
 pub fn write(
     writer: *std.Io.Writer,
-    pixels: []const u8,
+    pixels: []Rgba,
     width: u32,
     height: u32,
-    format: Format,
     binary: bool,
 ) !void {
     if (width == 0) return WriteError.InvalidWidth;
@@ -23,18 +22,11 @@ pub fn write(
 
     try writer.print("{s}\n{d} {d}\n{d}\n", .{ magic, width, height, max_value });
 
-    var index: usize = 0;
-    const pixel_size = format.size();
-    if (binary) {
-        while (index < pixels.len) : (index += pixel_size) {
-            try writer.writeAll(pixels[index .. index + 3]);
-        }
-    } else {
-        while (index < pixels.len) : (index += pixel_size) {
-            const r = pixels[index + 0];
-            const g = pixels[index + 1];
-            const b = pixels[index + 2];
-            try writer.print("{d} {d} {d}\n", .{ r, g, b });
+    for (pixels) |pixel| {
+        if (binary) {
+            try writer.writeAll(std.mem.asBytes(&pixel)[0..3]);
+        } else {
+            try writer.print("{d} {d} {d}\n", .{ pixel.r, pixel.g, pixel.b });
         }
     }
 
