@@ -2,29 +2,27 @@ const std = @import("std");
 
 const cmsghdr = std.os.linux.cmsghdr;
 
-pub const cmsghdr_size = @sizeOf(cmsghdr);
-
 pub fn alignForward(length: usize) usize {
     return std.mem.alignForward(usize, length, @alignOf(usize));
 }
 
 pub fn len(length: usize) usize {
-    return alignForward(cmsghdr_size) + length;
+    return alignForward(@sizeOf(cmsghdr)) + length;
 }
 
 pub fn space(length: usize) usize {
-    return alignForward(length) + alignForward(cmsghdr_size);
+    return alignForward(length) + alignForward(@sizeOf(cmsghdr));
 }
 
 pub fn data(cmsg: *const cmsghdr) [*]u8 {
     const ptr: usize = @intFromPtr(cmsg);
-    return @ptrFromInt(ptr + cmsghdr_size);
+    return @ptrFromInt(ptr + @sizeOf(cmsghdr));
 }
 
-pub fn nextHeader(mhdr: *const std.os.linux.msghdr, cmsg: *const cmsghdr) ?*cmsghdr {
-    if (cmsg.len < cmsghdr_size) return null;
+pub fn nextHeader(mhdr: anytype, cmsg: *const cmsghdr) ?*cmsghdr {
+    if (cmsg.len < @sizeOf(cmsghdr)) return null;
 
-    const next_cmsg_offset = std.mem.alignForward(usize, cmsg.len, @alignOf(usize)) + cmsghdr_size;
+    const next_cmsg_offset = std.mem.alignForward(usize, cmsg.len, @alignOf(usize)) + @sizeOf(cmsghdr);
 
     var mhdr_end: usize = @intFromPtr(mhdr);
     mhdr_end += mhdr.controllen;

@@ -135,6 +135,7 @@ pub fn write(
 ) !void {
     if (width == 0) return WriteError.InvalidWidth;
     if (height == 0) return WriteError.InvalidHeight;
+    assert(pixels.len > 0);
 
     const header: Header = .{
         .width = width,
@@ -146,7 +147,7 @@ pub fn write(
     try writer.writeAll(&Header.magic);
     try writer.writeStruct(header, .big);
 
-    const end = pixels.len -| 1;
+    const end = pixels.len - 1;
 
     var cache: [64]Rgba = @splat(.{ .r = 0, .g = 0, .b = 0, .a = 0 });
     var prev_pixel: Rgba = .{ .r = 0, .g = 0, .b = 0, .a = 255 };

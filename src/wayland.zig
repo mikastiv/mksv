@@ -153,7 +153,7 @@ pub fn receiveMessageFd(socket: Fd, buf: []u8) !struct { []u8, Fd } {
     const data_size = @sizeOf(Fd);
     var cmsg_buf: [cmsg.space(data_size)]u8 align(@alignOf(std.os.linux.cmsghdr)) = @splat(0);
 
-    var msg: std.os.linux.msghdr = .{
+    var msghdr: std.os.linux.msghdr = .{
         .name = null,
         .namelen = 0,
         .iov = &iov,
@@ -163,10 +163,10 @@ pub fn receiveMessageFd(socket: Fd, buf: []u8) !struct { []u8, Fd } {
         .flags = 0,
     };
 
-    const recv = std.os.linux.recvmsg(socket, &msg, 0);
+    const recv = std.os.linux.recvmsg(socket, &msghdr, 0);
     if (recv == -1) return error.RecvMsgFailed;
 
-    if (msg.flags & std.os.linux.MSG.TRUNC != 0 or msg.flags & std.os.linux.MSG.CTRUNC != 0) {
+    if (msghdr.flags & std.os.linux.MSG.TRUNC != 0 or msghdr.flags & std.os.linux.MSG.CTRUNC != 0) {
         return error.BufferTooSmall;
     }
 
@@ -178,10 +178,10 @@ pub fn receiveMessageFd(socket: Fd, buf: []u8) !struct { []u8, Fd } {
             break;
         }
 
-        cmessage = cmsg.nextHeader(&msg, cmsg) orelse break;
+        cmessage = cmsg.nextHeader(&msghdr, cmsg) orelse break;
     }
 
-    return .{ msg.iov[0].base[0..msg.iov[0].len], fd };
+    return .{ msghdr.iov[0].base[0..msghdr.iov[0].len], fd };
 }
 
 pub fn readString(reader: *std.Io.Reader, comptime max_len: usize) !BoundedArray(u8, max_len) {
