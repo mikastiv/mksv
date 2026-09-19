@@ -1,5 +1,7 @@
 pub const image = @import("image.zig");
 pub const hash = @import("hash.zig");
+pub const wayland = @import("wayland.zig");
+pub const linux = @import("linux.zig");
 
 const bounded_array = @import("bounded_array.zig");
 pub const BoundedArray = bounded_array.BoundedArray;
