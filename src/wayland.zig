@@ -2877,3 +2877,91 @@ pub const zxdg = struct {
         }
     };
 };
+
+pub const kde = struct {
+    pub const KwinServerDecorationManager = struct {
+        id: ObjectId,
+
+        pub const interface = "org_kde_kwin_server_decoration_manager";
+
+        pub const Request = enum(u16) {
+            create = 0,
+        };
+
+        pub const Event = enum(u16) {
+            default_mode = 0,
+        };
+
+        pub const Mode = enum(u32) {
+            none = 0,
+            client = 1,
+            server = 2,
+        };
+
+        pub fn create(
+            self: KwinServerDecorationManager,
+            writer: *std.Io.Writer,
+            surface: wl.Surface,
+        ) !KwinServerDecoration {
+            const new_id = id_allocator.alloc();
+
+            try sendMessage(writer, self.id, @intFromEnum(Request.create), &.{
+                .{ .new_id = new_id },
+                .{ .object = surface.id },
+            });
+
+            log.debug("-> org_kde_kwin_server_decoration_manager@{d}.create: surface={d}", .{ self.id, surface.id });
+
+            return .{ .id = new_id };
+        }
+
+        pub fn onDefaultMode(self: KwinServerDecorationManager, reader: *std.Io.Reader) !Mode {
+            const mode = try reader.takeEnum(Mode, .native);
+
+            log.debug("<- org_kde_kwin_server_decoration_manager@{d}.default_mode: mode={t}", .{ self.id, mode });
+
+            return mode;
+        }
+    };
+
+    pub const KwinServerDecoration = struct {
+        id: ObjectId,
+
+        pub const Request = enum(u16) {
+            release = 0,
+            request_mode = 1,
+        };
+
+        pub const Event = enum(u16) {
+            mode = 0,
+        };
+
+        pub const Mode = enum(u32) {
+            none = 0,
+            client = 1,
+            server = 2,
+        };
+
+        pub fn release(self: KwinServerDecoration, writer: *std.Io.Writer) !void {
+            try sendMessage(writer, self.id, @intFromEnum(Request.release), &.{});
+
+            log.debug("-> org_kde_kwin_server_decoration@{d}.release", .{self.id});
+        }
+
+        pub fn requestMode(self: KwinServerDecoration, writer: *std.Io.Writer, mode: Mode) !void {
+            try sendMessage(writer, self.id, @intFromEnum(Request.request_mode), &.{
+                .{ .uint = @intFromEnum(mode) },
+            });
+
+            log.debug("-> org_kde_kwin_server_decoration@{d}.request_mode: mode={t}", .{ self.id, mode });
+        }
+
+        pub fn onMode(self: KwinServerDecoration, reader: *std.Io.Reader) !Mode {
+            const mode = try reader.takeEnum(Mode, .native);
+
+            log.debug("<- org_kde_kwin_server_decoration@{d}.mode: mode={t}", .{ self.id, mode });
+
+            return mode;
+        }
+    };
+};
