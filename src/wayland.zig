@@ -16,6 +16,14 @@ pub const Opcode = u16;
 pub const Fixed = packed struct(u32) {
     decimal: u8,
     integer: u24,
+
+    pub fn format(self: Fixed, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        const raw: u32 = @bitCast(self);
+        const float: f32 = @floatFromInt(raw);
+        const value = float / std.math.pow(f32, 2, @bitSizeOf(@TypeOf(self.decimal)));
+
+        try writer.print("{d}", .{value});
+    }
 };
 
 pub const Arg = union(enum) {
@@ -280,7 +288,7 @@ pub const wl = struct {
 
             try sendMessage(writer, self.id, @intFromEnum(Request.sync), &.{.{ .new_id = new_id }});
 
-            log.debug("-> wl_display@{d}.sync: wl_callback={d}", .{ self.id, new_id });
+            log.debug("-> wl_display@{d}.sync: callback={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
@@ -290,24 +298,24 @@ pub const wl = struct {
 
             try sendMessage(writer, self.id, @intFromEnum(Request.get_registry), &.{.{ .new_id = new_id }});
 
-            log.debug("-> wl_display@{d}.get_registry: wl_registry={d}", .{ self.id, new_id });
+            log.debug("-> wl_display@{d}.get_registry: registry={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
 
         pub fn onError(self: *const Display, reader: *std.Io.Reader) !struct { ObjectId, u32, String } {
-            const target_object_id = try reader.takeInt(ObjectId, .native);
+            const object_id = try reader.takeInt(ObjectId, .native);
             const code = try reader.takeInt(u32, .native);
             const err = try readString(reader, string_max_len);
 
-            log.err("<- wl_display@{d}.error: target_object_id={d} code={d} error={s}", .{
+            log.err("<- wl_display@{d}.error: object_id={d} code={d} error={s}", .{
                 self.id,
-                target_object_id,
+                object_id,
                 code,
                 err.slice(),
             });
 
-            return .{ target_object_id, code, err };
+            return .{ object_id, code, err };
         }
 
         pub fn onDeleteId(self: *const Display, reader: *std.Io.Reader) !ObjectId {
@@ -352,12 +360,12 @@ pub const wl = struct {
                 .{ .new_id = new_id },
             });
 
-            log.debug("-> wl_display@{d}.bind: name={d} interface={s} version={d} id={d}", .{
+            log.debug("-> wl_display@{d}.bind: name={d} id={d} interface={s} version={d}", .{
                 self.id,
                 global_object.name,
+                new_id,
                 global_object.interface.slice(),
                 global_object.version,
-                new_id,
             });
 
             return .{ .id = new_id };
@@ -423,7 +431,7 @@ pub const wl = struct {
 
             try sendMessage(writer, self.id, @intFromEnum(Request.create_surface), &.{.{ .new_id = new_id }});
 
-            log.debug("-> wl_compositor@{d}.create_surface: wl_surface={d}", .{ self.id, new_id });
+            log.debug("-> wl_compositor@{d}.create_surface: id={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
@@ -433,7 +441,7 @@ pub const wl = struct {
 
             try sendMessage(writer, self.id, @intFromEnum(Request.create_region), &.{ .new_id = new_id });
 
-            log.debug("-> wl_compositor@{d}.create_region: wl_region={d}", .{ self.id, new_id });
+            log.debug("-> wl_compositor@{d}.create_region: id={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
@@ -480,7 +488,7 @@ pub const wl = struct {
             });
 
             log.debug(
-                "-> wl_shm_pool@{d}.create_buffer: wl_buffer={d} offset={d} width={d} height={d} stride={d} format={t}",
+                "-> wl_shm_pool@{d}.create_buffer: id={d} offset={d} width={d} height={d} stride={d} format={t}",
                 .{ self.id, new_id, offset, width, height, stride, format },
             );
 
@@ -680,7 +688,7 @@ pub const wl = struct {
                 .{ .fd = shm_fd },
             });
 
-            log.debug("-> wl_shm@{d}.create_pool: wl_shm_pool={d} fd={d}", .{ self.id, new_id, shm_fd });
+            log.debug("-> wl_shm@{d}.create_pool: id={d} fd={d}", .{ self.id, new_id, shm_fd });
 
             return .{ .id = new_id };
         }
@@ -973,7 +981,7 @@ pub const wl = struct {
         pub fn onDataOffer(self: DataDevice, reader: *std.Io.Reader) !DataOffer {
             const new_id = try reader.takeInt(ObjectId, .native);
 
-            log.debug("<- wl_data_device@{d}.data_offer: data_offer={d}", .{ self.id, new_id });
+            log.debug("<- wl_data_device@{d}.data_offer: id={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
@@ -986,7 +994,7 @@ pub const wl = struct {
             const id = try reader.takeInt(ObjectId, .native);
             const data_offer: ?DataOffer = if (id == 0) null else .{ .id = id };
 
-            log.debug("<- wl_data_device@{d}.enter: serial={d} surface={d} x={any} y={any} data_offer={any}", .{
+            log.debug("<- wl_data_device@{d}.enter: serial={d} surface={d} x={f} y={f} data_offer={any}", .{
                 self.id,
                 serial,
                 surface,
@@ -1007,7 +1015,7 @@ pub const wl = struct {
             const x = try reader.takeStruct(Fixed, .native);
             const y = try reader.takeStruct(Fixed, .native);
 
-            log.debug("<- wl_data_device@{d}.motion: time={d} x={any} y={any}", .{ self.id, time, x, y });
+            log.debug("<- wl_data_device@{d}.motion: time={d} x={f} y={f}", .{ self.id, time, x, y });
 
             return .{ time, x, y };
         }
@@ -1052,7 +1060,7 @@ pub const wl = struct {
                 .{ .object = seat.id },
             });
 
-            log.debug("-> wl_data_device_manager@{d}.create_data_source: data_source={d}", .{ self.id, new_id });
+            log.debug("-> wl_data_device_manager@{d}.create_data_source: id={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
@@ -1065,7 +1073,7 @@ pub const wl = struct {
                 .{ .object = seat.id },
             });
 
-            log.debug("-> wl_data_device_manager@{d}.get_data_device: data_device={d}", .{ self.id, new_id });
+            log.debug("-> wl_data_device_manager@{d}.get_data_device: id={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
@@ -1117,14 +1125,14 @@ pub const wl = struct {
             log.debug("-> wl_surface@{d}.destroy", .{self.id});
         }
 
-        pub fn attach(self: Surface, writer: *std.Io.Writer, wl_buffer: Buffer, x: i32, y: i32) !void {
+        pub fn attach(self: Surface, writer: *std.Io.Writer, buffer: Buffer, x: i32, y: i32) !void {
             try sendMessage(writer, self.id, @intFromEnum(Request.attach), &.{
-                .{ .object = wl_buffer.id },
+                .{ .object = buffer.id },
                 .{ .int = x },
                 .{ .int = y },
             });
 
-            log.debug("-> wl_surface@{d}.attach: wl_buffer={d}", .{ self.id, wl_buffer.id });
+            log.debug("-> wl_surface@{d}.attach: buffer={d}", .{ self.id, buffer.id });
         }
 
         pub fn damage(self: Surface, writer: *std.Io.Writer, x: i32, y: i32, width: i32, height: i32) !void {
@@ -1143,7 +1151,7 @@ pub const wl = struct {
 
             try sendMessage(writer, self.id, @intFromEnum(Request.frame), &.{.{ .new_id = new_id }});
 
-            log.debug("-> wl_surface@{d}.frame: wl_callback={d}", .{ self.id, new_id });
+            log.debug("-> wl_surface@{d}.frame: callback={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
@@ -1294,7 +1302,7 @@ pub const wl = struct {
                 .{ .new_id = new_id },
             });
 
-            log.debug("-> wl_seat@{d}.get_pointer: pointer={d}", .{ self.id, new_id });
+            log.debug("-> wl_seat@{d}.get_pointer: id={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
@@ -1306,7 +1314,7 @@ pub const wl = struct {
                 .{ .new_id = new_id },
             });
 
-            log.debug("-> wl_seat@{d}.get_keyboard: keyboard={d}", .{ self.id, new_id });
+            log.debug("-> wl_seat@{d}.get_keyboard: id={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
@@ -1318,7 +1326,7 @@ pub const wl = struct {
                 .{ .new_id = new_id },
             });
 
-            log.debug("-> wl_seat@{d}.get_touch: touch={d}", .{ self.id, new_id });
+            log.debug("-> wl_seat@{d}.get_touch: id={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
@@ -1429,7 +1437,7 @@ pub const wl = struct {
             const surface_x = try reader.takeStruct(Fixed, .native);
             const surface_y = try reader.takeStruct(Fixed, .native);
 
-            log.debug("<- wl_pointer@{d}.enter: serial={d} surface={d} surface_x={any} surface_y={any}", .{
+            log.debug("<- wl_pointer@{d}.enter: serial={d} surface={d} surface_x={f} surface_y={f}", .{
                 self.id,
                 serial,
                 surface,
@@ -1454,7 +1462,7 @@ pub const wl = struct {
             const surface_x = try reader.takeStruct(Fixed, .native);
             const surface_y = try reader.takeStruct(Fixed, .native);
 
-            log.debug("<- wl_pointer@{d}.motion: time={d} surface_x={d} surface_y={d}", .{
+            log.debug("<- wl_pointer@{d}.motion: time={d} surface_x={f} surface_y={f}", .{
                 self.id,
                 time,
                 surface_x,
@@ -1486,7 +1494,7 @@ pub const wl = struct {
             const axis = try reader.takeEnum(Axis, .native);
             const value = try reader.takeStruct(Fixed, .native);
 
-            log.debug("<- wl_pointer@{d}.axis: time={d} axis={t} value={any}", .{ self.id, time, axis, value });
+            log.debug("<- wl_pointer@{d}.axis: time={d} axis={t} value={f}", .{ self.id, time, axis, value });
 
             return .{ time, axis, value };
         }
@@ -1558,7 +1566,7 @@ pub const wl = struct {
             const surface_x = try reader.takeStruct(Fixed, .native);
             const surface_y = try reader.takeStruct(Fixed, .native);
 
-            log.debug("<- wl_pointer@{d}.warp: surface_x={any} surface_y={any}", .{
+            log.debug("<- wl_pointer@{d}.warp: surface_x={f} surface_y={f}", .{
                 self.id,
                 surface_x,
                 surface_y,
@@ -1722,7 +1730,7 @@ pub const wl = struct {
             const x = try reader.takeStruct(Fixed, .native);
             const y = try reader.takeStruct(Fixed, .native);
 
-            log.debug("<- wl_touch@{d}.down: serial={d} time={d} surface={d} id={d} x={any} y={any}", .{
+            log.debug("<- wl_touch@{d}.down: serial={d} time={d} surface={d} id={d} x={f} y={f}", .{
                 self.id,
                 serial,
                 time,
@@ -1751,7 +1759,7 @@ pub const wl = struct {
             const x = try reader.takeStruct(Fixed, .native);
             const y = try reader.takeStruct(Fixed, .native);
 
-            log.debug("<- wl_touch@{d}.motion: time={d} id={d} x={any} y={any}", .{ self.id, time, id, x, y });
+            log.debug("<- wl_touch@{d}.motion: time={d} id={d} x={f} y={f}", .{ self.id, time, id, x, y });
 
             return .{ time, id, x, y };
         }
@@ -1769,7 +1777,7 @@ pub const wl = struct {
             const major = try reader.takeStruct(Fixed, .native);
             const minor = try reader.takeStruct(Fixed, .native);
 
-            log.debug("<- wl_touch@{d}.shape: id={d} major={any} minor={d}", .{ self.id, id, major, minor });
+            log.debug("<- wl_touch@{d}.shape: id={d} major={f} minor={f}", .{ self.id, id, major, minor });
 
             return .{ id, major, minor };
         }
@@ -1778,7 +1786,7 @@ pub const wl = struct {
             const id = try reader.takeInt(i32, .native);
             const orientation = try reader.takeStruct(Fixed, .native);
 
-            log.debug("<- wl_touch@{d}.orientation: id={d} orientation={any}", .{ self.id, id, orientation });
+            log.debug("<- wl_touch@{d}.orientation: id={d} orientation={f}", .{ self.id, id, orientation });
 
             return .{ id, orientation };
         }
@@ -1977,7 +1985,7 @@ pub const wl = struct {
                 .{ .object = parent.id },
             });
 
-            log.debug("-> wl_subcompositor@{d}.get_subsurface: subsurface={d} surface={d} parent={d}", .{self.id});
+            log.debug("-> wl_subcompositor@{d}.get_subsurface: id={d} surface={d} parent={d}", .{self.id});
 
             return .{ .id = new_id };
         }
@@ -2104,7 +2112,7 @@ pub const wl = struct {
                 });
 
                 log.debug(
-                    "-> zxdg_decoration_manager_v1@{d}.get_toplevel_decoration: toplevel_decoration={d} xdg_toplevel={d}",
+                    "-> zxdg_decoration_manager_v1@{d}.get_toplevel_decoration: id={d} toplevel={d}",
                     .{ self.id, new_id, toplevel.id },
                 );
 
@@ -2154,6 +2162,99 @@ pub const wl = struct {
     };
 };
 
+pub const wp = struct {
+    pub const Viewporter = struct {
+        id: ObjectId,
+
+        pub const Request = enum(u16) {
+            destroy = 0,
+            get_viewport = 1,
+        };
+
+        pub const Error = enum(u32) {
+            viewport_exists = 0,
+        };
+
+        pub fn destroy(self: Viewporter, writer: *std.Io.Writer) !void {
+            try sendMessage(writer, self.id, @intFromEnum(Request.destroy), &.{});
+
+            log.debug("-> wp_viewporter@{d}.destroy", .{self.id});
+        }
+
+        pub fn getViewport(self: Viewporter, writer: *std.Io.Writer, surface: wl.Surface) !Viewport {
+            const new_id = id_allocator.alloc();
+
+            try sendMessage(writer, self.id, @intFromEnum(Request.get_viewport), &.{
+                .{ .new_id = new_id },
+            });
+
+            log.debug("-> wp_viewporter@{d}.get_viewport: id={d} surface={d}", .{
+                self.id,
+                new_id,
+                surface,
+            });
+
+            return .{ .id = new_id };
+        }
+    };
+
+    pub const Viewport = struct {
+        id: ObjectId,
+
+        pub const Request = enum(u16) {
+            destroy = 0,
+            set_source = 1,
+            set_destination = 2,
+        };
+
+        pub const Error = enum(u32) {
+            bad_value = 0,
+            bad_size = 1,
+            out_of_buffer = 2,
+            no_surface = 3,
+        };
+
+        pub fn destroy(self: Viewport, writer: *std.Io.Writer) !void {
+            try sendMessage(writer, self.id, @intFromEnum(Request.destroy), &.{});
+
+            log.debug("-> wp_viewport@{d}.destroy", .{self.id});
+        }
+
+        pub fn setSource(
+            self: Viewport,
+            writer: *std.Io.Writer,
+            x: Fixed,
+            y: Fixed,
+            width: Fixed,
+            height: Fixed,
+        ) !void {
+            try sendMessage(writer, self.id, @intFromEnum(Request.set_source), &.{
+                .{ .fixed = x },
+                .{ .fixed = y },
+                .{ .fixed = width },
+                .{ .fixed = height },
+            });
+
+            log.debug("-> wp_viewport@{d}.set_source: x={f} y={f} width={f} height={f}", .{
+                self.id,
+                x,
+                y,
+                width,
+                height,
+            });
+        }
+
+        pub fn setDestination(self: Viewport, writer: *std.Io.Writer, width: i32, height: i32) !void {
+            try sendMessage(writer, self.id, @intFromEnum(Request.set_destination), &.{
+                .{ .int = width },
+                .{ .int = height },
+            });
+
+            log.debug("-> wp_viewport@{d}.set_destination: width={d} height={d}", .{ self.id, width, height });
+        }
+    };
+};
+
 pub const xdg = struct {
     pub const WmBase = struct {
         id: ObjectId,
@@ -2194,7 +2295,7 @@ pub const xdg = struct {
                 .{ .new_id = new_id },
             });
 
-            log.debug("-> xdg_wm_base@{d}.create_positioner: positioner={d}", .{ self.id, new_id });
+            log.debug("-> xdg_wm_base@{d}.create_positioner: id={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
@@ -2207,7 +2308,7 @@ pub const xdg = struct {
                 .{ .object = surface.id },
             });
 
-            log.debug("-> xdg_wm_base@{d}.get_xdg_surface: xdg_surface={d} wl_surface={d}", .{ self.id, new_id, surface.id });
+            log.debug("-> xdg_wm_base@{d}.get_xdg_surface: id={d} surface={d}", .{ self.id, new_id, surface.id });
 
             return .{ .id = new_id };
         }
@@ -2430,7 +2531,7 @@ pub const xdg = struct {
 
             try sendMessage(writer, self.id, @intFromEnum(Request.get_toplevel), &.{.{ .new_id = new_id }});
 
-            log.debug("-> xdg_surface@{d}.get_toplevel: xdg_toplevel={d}", .{ self.id, new_id });
+            log.debug("-> xdg_surface@{d}.get_toplevel: id={d}", .{ self.id, new_id });
 
             return .{ .id = new_id };
         }
@@ -2444,7 +2545,7 @@ pub const xdg = struct {
                 .{ .object = positioner.id },
             });
 
-            log.debug("-> xdg_surface@{d}.get_popup: popup={d} parent={?any} positioner={d}", .{
+            log.debug("-> xdg_surface@{d}.get_popup: id={d} parent={?any} positioner={d}", .{
                 self.id,
                 parent,
                 positioner,
@@ -2829,7 +2930,7 @@ pub const zxdg = struct {
             });
 
             log.debug(
-                "-> zxdg_decoration_manager_v1@{d}.get_toplevel_decoration: toplevel_decoration={d} xdg_toplevel={d}",
+                "-> zxdg_decoration_manager_v1@{d}.get_toplevel_decoration: id={d} toplevel={d}",
                 .{ self.id, new_id, toplevel.id },
             );
 
@@ -2910,7 +3011,7 @@ pub const kde = struct {
                 .{ .object = surface.id },
             });
 
-            log.debug("-> org_kde_kwin_server_decoration_manager@{d}.create: surface={d}", .{ self.id, surface.id });
+            log.debug("-> org_kde_kwin_server_decoration_manager@{d}.create: id={d}", .{ self.id, surface.id });
 
             return .{ .id = new_id };
         }
