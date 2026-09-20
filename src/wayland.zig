@@ -37,7 +37,13 @@ pub const Arg = union(enum) {
     fixed: Fixed,
 };
 
-pub const ObjectIdAllocator = struct {
+pub const Global = struct {
+    name: u32,
+    interface: String,
+    version: u32,
+};
+
+const ObjectIdAllocator = struct {
     current_id: ObjectId,
 
     const init: ObjectIdAllocator = .{ .current_id = 2 };
@@ -327,12 +333,6 @@ pub const wl = struct {
         }
     };
 
-    pub const GlobalObject = struct {
-        name: u32,
-        interface: String,
-        version: u32,
-    };
-
     pub const Registry = struct {
         id: ObjectId,
 
@@ -349,29 +349,29 @@ pub const wl = struct {
             self: Registry,
             comptime T: type,
             writer: *std.Io.Writer,
-            global_object: *const GlobalObject,
+            global: *const Global,
         ) !T {
             const new_id = id_allocator.alloc();
 
             try sendMessage(writer, self.id, @intFromEnum(Request.bind), &.{
-                .{ .uint = global_object.name },
-                .{ .string = global_object.interface.slice() },
-                .{ .uint = global_object.version },
+                .{ .uint = global.name },
+                .{ .string = global.interface.slice() },
+                .{ .uint = global.version },
                 .{ .new_id = new_id },
             });
 
             log.debug("-> wl_display@{d}.bind: name={d} id={d} interface={s} version={d}", .{
                 self.id,
-                global_object.name,
+                global.name,
                 new_id,
-                global_object.interface.slice(),
-                global_object.version,
+                global.interface.slice(),
+                global.version,
             });
 
             return .{ .id = new_id };
         }
 
-        pub fn onGlobal(self: Registry, reader: *std.Io.Reader) !GlobalObject {
+        pub fn onGlobal(self: Registry, reader: *std.Io.Reader) !Global {
             const name = try reader.takeInt(u32, .native);
             const interface = try readString(reader, string_max_len);
             const version = try reader.takeInt(u32, .native);
