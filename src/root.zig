@@ -4,6 +4,7 @@ const assert = std.debug.assert;
 const bounded_array = @import("bounded_array.zig");
 pub const BoundedArray = bounded_array.BoundedArray;
 pub const BoundedArrayAligned = bounded_array.BoundedArrayAligned;
+pub const Gltf = @import("Gltf.zig");
 pub const hash = @import("hash.zig");
 pub const image = @import("image.zig");
 pub const linux = @import("linux.zig");
