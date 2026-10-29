@@ -63,6 +63,7 @@ pub fn WindowIterator(comptime T: type, comptime is_const: bool) type {
 }
 
 test {
+    _ = Gltf;
     _ = image;
     _ = hash;
     _ = bounded_array;
