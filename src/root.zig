@@ -9,6 +9,11 @@ pub const hash = @import("hash.zig");
 pub const image = @import("image.zig");
 pub const linux = @import("linux.zig");
 
+pub const KiB = 1024;
+pub const MiB = KiB * 1024;
+pub const GiB = MiB * 1024;
+pub const TiB = GiB * 1024;
+
 pub fn window(comptime T: type, buffer: []T, size: usize, advance: usize) WindowIterator(T, false) {
     assert(size != 0);
     assert(advance != 0);
