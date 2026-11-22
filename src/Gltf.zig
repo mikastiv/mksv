@@ -458,28 +458,34 @@ pub const Sampler = struct {
 };
 
 pub const ext = struct {
-    pub const LightPunctual = struct {
+    pub const KhrLightsPunctual = struct {
         pub const name = "KHR_lights_punctual";
 
-        lights: []Light,
-    };
+        pub const Light = struct {
+            pub const Spot = struct {
+                innerConeAngle: Number = 0.0,
+                outerConeAngle: Number = std.math.pi / 4.0,
+            };
 
-    pub const Light = struct {
-        pub const Spot = struct {
-            innerConeAngle: Number = 0.0,
-            outerConeAngle: Number = std.math.pi / 4.0,
+            name: []const u8 = "",
+            color: Vec3 = .{ 1.0, 1.0, 1.0 },
+            intensity: Number = 1.0,
+            type: enum {
+                directional,
+                point,
+                spot,
+            },
+            range: ?Number = null,
+            spot: ?Spot = null,
         };
 
-        name: []const u8 = "",
-        color: Vec3 = .{ 1.0, 1.0, 1.0 },
-        intensity: Number = 1.0,
-        type: enum {
-            directional,
-            point,
-            spot,
-        },
-        range: ?Number = null,
-        spot: ?Spot = null,
+        pub const Container = struct {
+            lights: []Light,
+        };
+
+        pub const Node = struct {
+            light: Integer,
+        };
     };
 };
 
