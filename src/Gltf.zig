@@ -457,6 +457,32 @@ pub const Sampler = struct {
     extras: ?Extras = null,
 };
 
+pub const ext = struct {
+    pub const LightPunctual = struct {
+        pub const name = "KHR_lights_punctual";
+
+        lights: []Light,
+    };
+
+    pub const Light = struct {
+        pub const Spot = struct {
+            innerConeAngle: Number = 0.0,
+            outerConeAngle: Number = std.math.pi / 4.0,
+        };
+
+        name: []const u8 = "",
+        color: Vec3 = .{ 1.0, 1.0, 1.0 },
+        intensity: Number = 1.0,
+        type: enum {
+            directional,
+            point,
+            spot,
+        },
+        range: ?Number = null,
+        spot: ?Spot = null,
+    };
+};
+
 const Glb = struct {
     json: []const u8,
     binary: ?[]const u8,
@@ -489,19 +515,19 @@ pub fn parse(allocator: std.mem.Allocator, data: []align(4) const u8, enable_log
     return gltf;
 }
 
-pub fn loadBinaryData(self: *const Gltf, allocator: std.mem.Allocator, io: std.Io, dirpath: []const u8) !?[]u8 {
-    if (self.buffers) |buffers| {
-        const dir = try std.Io.Dir.cwd().openDir(io, dirpath, .{});
-        defer dir.close(io);
+pub fn getExtensionValue(self: *const Gltf, comptime T: type, allocator: std.mem.Allocator, name: []const u8) !?T {
+    const exts = self.extensions orelse return null;
+    const value = exts.map.get(name) orelse return null;
+    return try std.json.parseFromValueLeaky(T, allocator, value, .{ .ignore_unknown_fields = true });
+}
 
-        for (buffers) |buffer| {
-            if (buffer.uri) |uri| {
-                return try dir.readFileAlloc(io, uri, allocator, .limited(std.math.maxInt(u32)));
-            }
-        }
-    }
+pub fn loadUri(allocator: std.mem.Allocator, io: std.Io, basedir: []const u8, uri: []const u8) !?[]u8 {
+    if (std.mem.startsWith(u8, uri, "data:")) @panic("unimplemented");
 
-    return null;
+    const dir = try std.Io.Dir.cwd().openDir(io, basedir, .{});
+    defer dir.close(io);
+
+    return try dir.readFileAlloc(io, uri, allocator, .limited(std.math.maxInt(u32)));
 }
 
 fn validate(self: *const Gltf, allocator: std.mem.Allocator, diagnostics: *?[]const u8) !void {
