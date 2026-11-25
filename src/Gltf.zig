@@ -494,7 +494,7 @@ const Glb = struct {
     binary: ?[]const u8,
 };
 
-pub fn parse(allocator: std.mem.Allocator, data: []align(4) const u8, enable_log: bool) !Gltf {
+pub fn parse(allocator: std.mem.Allocator, data: []align(4) const u8) !Gltf {
     if (data.len < 4) return error.InvalidGltfFile;
 
     const is_glb = std.mem.readInt(u32, data[0..4], .little) == magic.glb;
@@ -506,16 +506,6 @@ pub fn parse(allocator: std.mem.Allocator, data: []align(4) const u8, enable_log
             break :blk json;
         },
         false => try std.json.parseFromSliceLeaky(Gltf, allocator, data, .{}),
-    };
-
-    var diagnostics: ?[]const u8 = null;
-    validate(&gltf, allocator, &diagnostics) catch |err| {
-        if (diagnostics) |message| {
-            defer allocator.free(message);
-            if (enable_log) log.err("{s}", .{message});
-        }
-
-        return err;
     };
 
     return gltf;
@@ -536,7 +526,7 @@ pub fn loadUri(allocator: std.mem.Allocator, io: std.Io, basedir: []const u8, ur
     return try dir.readFileAlloc(io, uri, allocator, .limited(std.math.maxInt(u32)));
 }
 
-fn validate(self: *const Gltf, allocator: std.mem.Allocator, diagnostics: *?[]const u8) !void {
+pub fn validate(self: *const Gltf, allocator: std.mem.Allocator, diagnostics: *?[]const u8) !void {
     if (!std.mem.eql(u8, self.asset.version, "2.0")) {
         diagnostics.* = try allocator.print("unsupported gltf version: {s}", .{self.asset.version});
         return error.UnsupportedGltfVersion;
@@ -701,6 +691,7 @@ fn validate(self: *const Gltf, allocator: std.mem.Allocator, diagnostics: *?[]co
                     diagnostics.* = try allocator.print("bufferViews[{d}].byteStride is not a multiple of 4", .{i});
                     return error.InvalidGltf;
                 }
+
                 if (byteStride < 4) {
                     diagnostics.* = try allocator.print("bufferViews[{d}].byteStride < 4", .{i});
                     return error.InvalidGltf;
